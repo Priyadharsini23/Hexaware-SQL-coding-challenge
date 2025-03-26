@@ -1,0 +1,183 @@
+CREATE DATABASE CRIMEMANAGEMENT; -- Creating Database
+USE CRIMEMANAGEMENT;
+
+CREATE TABLE Crime (
+    CrimeID INT PRIMARY KEY,
+    IncidentType VARCHAR(255),
+    IncidentDate DATE,
+    Location VARCHAR(255),
+    Description TEXT,
+    Status VARCHAR(20)
+);
+
+CREATE TABLE Victim (
+    VictimID INT PRIMARY KEY,
+    CrimeID INT,
+    Name VARCHAR(255),
+    ContactInfo VARCHAR(255),
+    Injuries VARCHAR(255),
+    FOREIGN KEY (CrimeID) REFERENCES Crime(CrimeID)
+);
+
+CREATE TABLE Suspect (
+    SuspectID INT PRIMARY KEY,
+    CrimeID INT,
+    Name VARCHAR(255),
+    Description TEXT,
+    CriminalHistory TEXT,
+    FOREIGN KEY (CrimeID) REFERENCES Crime(CrimeID)
+);
+
+-- Inserting Sample Data
+
+INSERT INTO Crime (CrimeID, IncidentType, IncidentDate, Location, Description, Status)
+VALUES
+    (1, 'Robbery', '2023-09-15', '123 Main St, Cityville', 'Armed robbery at a convenience store', 'Open'),
+    (2, 'Homicide', '2023-09-20', '456 Elm St, Townsville', 'Investigation into a murder case', 'Under Investigation'),
+    (3, 'Theft', '2023-09-10', '789 Oak St, Villagetown', 'Shoplifting incident at a mall', 'Closed');
+
+INSERT INTO Victim (VictimID, CrimeID, Name, ContactInfo, Injuries)
+VALUES
+    (1, 1, 'John Doe', 'johndoe@example.com', 'Minor injuries'),
+    (2, 2, 'Jane Smith', 'janesmith@example.com', 'Deceased'),
+    (3, 3, 'Alice Johnson', 'alicejohnson@example.com', 'None');
+
+INSERT INTO Suspect (SuspectID, CrimeID, Name, Description, CriminalHistory)
+VALUES
+    (1, 1, 'Robber 1', 'Armed and masked robber', 'Previous robbery convictions'),
+    (2, 2, 'Unknown', 'Investigation ongoing', NULL),
+    (3, 3, 'Suspect 1', 'Shoplifting suspect', 'Prior shoplifting arrests');
+
+-- Creating the 'Individuals' Table for Age-Based Queries
+
+CREATE TABLE Individuals (
+    PersonID INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(255) UNIQUE,
+    Age INT
+);
+
+-- Inserting Data into 'Individuals' Table
+
+INSERT INTO Individuals (Name, Age)
+VALUES
+    ('John Doe', 35),
+    ('Jane Smith', 29),
+    ('Alice Johnson', 40),
+    ('Robber 1', 45),
+    ('Unknown', 38),
+    ('Suspect 1', 30);
+
+-- Queries Based on 20 Questions
+
+
+-- 1. List all crimes
+SELECT * FROM Crime;
+
+-- 2. Find all open crime cases
+SELECT * FROM Crime WHERE Status = 'Open';
+
+-- 3. Count the total number of crimes reported
+SELECT COUNT(*) AS TotalCrimes FROM Crime;
+
+-- 4. Find the most recent crime
+SELECT * FROM Crime ORDER BY IncidentDate DESC LIMIT 1;
+
+-- 5. List persons involved in incidents in descending order of age
+SELECT i.Name, i.Age, c.IncidentType
+FROM Individuals i
+LEFT JOIN Victim v ON i.Name = v.Name
+LEFT JOIN Suspect s ON i.Name = s.Name
+LEFT JOIN Crime c ON v.CrimeID = c.CrimeID OR s.CrimeID = c.CrimeID
+ORDER BY i.Age DESC;
+
+-- 6. Find the average age of persons involved in incidents
+SELECT AVG(Age) AS AverageAge FROM Individuals;
+
+-- 7. List crimes that occurred in 'Cityville'
+SELECT * FROM Crime WHERE Location LIKE '%Cityville%';
+
+-- 8. Find the number of victims per crime type
+SELECT c.IncidentType, COUNT(v.VictimID) AS VictimCount
+FROM Crime c
+LEFT JOIN Victim v ON c.CrimeID = v.CrimeID
+GROUP BY c.IncidentType;
+
+-- 9. Find the crime(s) with the highest number of victims
+SELECT c.IncidentType, COUNT(v.VictimID) AS VictimCount
+FROM Crime c
+LEFT JOIN Victim v ON c.CrimeID = v.CrimeID
+GROUP BY c.IncidentType
+ORDER BY VictimCount DESC
+LIMIT 1;
+
+-- 10. List incident types where there are persons aged 30 or 35 involved
+SELECT DISTINCT c.IncidentType
+FROM Crime c
+JOIN Victim v ON c.CrimeID = v.CrimeID
+JOIN Individuals i ON v.Name = i.Name
+WHERE i.Age IN (30, 35)
+UNION
+SELECT DISTINCT c.IncidentType
+FROM Crime c
+JOIN Suspect s ON c.CrimeID = s.CrimeID
+JOIN Individuals i ON s.Name = i.Name
+WHERE i.Age IN (30, 35);
+
+-- 11. Find the oldest suspect
+SELECT * FROM Suspect s
+JOIN Individuals i ON s.Name = i.Name
+ORDER BY i.Age DESC LIMIT 1;
+
+-- 12. Find the youngest victim
+SELECT * FROM Victim v
+JOIN Individuals i ON v.Name = i.Name
+ORDER BY i.Age ASC LIMIT 1;
+
+-- 13. Find how many suspects have a criminal history
+SELECT COUNT(*) AS SuspectsWithCriminalHistory
+FROM Suspect WHERE CriminalHistory IS NOT NULL;
+
+-- 14. List crimes where suspects have a prior record
+SELECT c.*
+FROM Crime c
+JOIN Suspect s ON c.CrimeID = s.CrimeID
+WHERE s.CriminalHistory IS NOT NULL;
+
+-- 15. Find incidents where the suspect is older than any victim
+SELECT DISTINCT c.CrimeID, c.IncidentType
+FROM Crime c
+JOIN Suspect s ON c.CrimeID = s.CrimeID
+JOIN Individuals si ON s.Name = si.Name
+WHERE si.Age > (
+    SELECT MAX(vi.Age)
+    FROM Victim v
+    JOIN Individuals vi ON v.Name = vi.Name
+    WHERE v.CrimeID = c.CrimeID
+);
+
+-- 16. Find crimes that have both a suspect and a victim
+SELECT c.*
+FROM Crime c
+JOIN Victim v ON c.CrimeID = v.CrimeID
+JOIN Suspect s ON c.CrimeID = s.CrimeID;
+
+-- 17. Find crimes that have suspects but no victims
+SELECT c.*
+FROM Crime c
+LEFT JOIN Victim v ON c.CrimeID = v.CrimeID
+WHERE v.VictimID IS NULL;
+
+-- 18. Find crimes that have victims but no suspects
+SELECT c.*
+FROM Crime c
+LEFT JOIN Suspect s ON c.CrimeID = s.CrimeID
+WHERE s.SuspectID IS NULL;
+
+-- 19. Count the number of crimes each suspect is involved in
+SELECT s.Name, COUNT(s.CrimeID) AS CrimeCount
+FROM Suspect s
+GROUP BY s.Name;
+
+-- 20. Find crimes reported between two specific dates (Example: 2023-09-10 to 2023-09-20)
+SELECT * FROM Crime
+WHERE IncidentDate BETWEEN '2023-09-10' AND '2023-09-20';
